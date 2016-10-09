@@ -10,7 +10,10 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const EXTENSIONDIR = Me.dir.get_path();
 
-let text, button;
+let button, icon, icon_path;
+
+// Kerberos related variables
+let klist  // list of things returned from klist
 
 var control = {
     _spawn_async: function(cmd, e) {
@@ -30,20 +33,36 @@ var control = {
     },
 
     init: function() {
-        this._spawn_async("gnome-terminal --command kinit", null);
+        this._spawn_sync("gnome-terminal --command kinit", null);
     }
 };
 
-function _hideHello() {
+function _isAuthenticated() {
+    // check if Kerberos authentication is present
+    if (klist[0] == true && klist[1] == "") {
+        return false;
+    }
+
+    if (klist[0] == true && klist[2] == "") {
+        return true;
+    }
+}
+
+function _hideMessage() {
     Main.uiGroup.remove_actor(text);
     text = null;
 }
 
-function _showHello() {
-    control.init();
+function _toggleStatus() {
+    _updateStatus();
+
+    //let dates = String.fromCharCode.apply(null,
+        //klist[1]).match(/(\d+\/\d+\/\d+ \d+:\d+:\d+)/g);
+
+    //label = 'Ticket expires: ' + dates[1];
 
     if (!text) {
-        text = new St.Label({ style_class: 'helloworld-label', text: "Hello, world!" });
+        text = new St.Label({ style_class: 'helloworld-label', text: 'test' });
         Main.uiGroup.add_actor(text);
     }
 
@@ -54,29 +73,48 @@ function _showHello() {
     text.set_position(monitor.x + Math.floor(monitor.width / 2 - text.width / 2),
                       monitor.y + Math.floor(monitor.height / 2 - text.height / 2));
 
-    Tweener.addTween(text,
-                     { opacity: 0,
-                       time: 2,
-                       transition: 'easeOutQuad',
-                       onComplete: _hideHello });
+    Tweener.addTween(text, {
+        opacity: 0,
+        time: 2,
+        transition: 'easeOutQuad',
+        onComplete: _hideMessage
+    });
+
+    if (_isAuthenticated() == false) {
+        control.init();
+    }
 }
 
+function _updateStatus() {
+    klist = GLib.spawn_command_line_sync("klist");
+
+    if (_isAuthenticated()) {  // klist exits with status true
+        icon_path = Me.path + '/icons/stanford_auth_on.svg';
+    } else {
+        icon_path = Me.path + '/icons/stanford_auth_off.svg';
+    }
+
+    icon.gicon = Gio.icon_new_for_string(icon_path);
+}
 
 function init() {
-    button = new St.Bin({ style_class: 'panel-button',
-                          reactive: true,
-                          can_focus: true,
-                          x_fill: false,
-                          y_fill: true,
-                          track_hover: true });
-    let gicon = Gio.icon_new_for_string(Me.path + '/icons/stanford_auth_on.svg');
-    let icon = new St.Icon({
-        gicon: gicon,
+    button = new St.Bin({
+        style_class: 'panel-button',
+        reactive: true,
+        can_focus: true,
+        x_fill: false,
+        y_fill: true,
+        track_hover: true
+    });
+
+    icon = new St.Icon({
         style_class: 'system-status-icon'
     });
 
+    _updateStatus();
+
     button.set_child(icon);
-    button.connect('button-press-event', _showHello);
+    button.connect('button-press-event', _toggleStatus);
 }
 
 function enable() {
