@@ -10,7 +10,7 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const EXTENSIONDIR = Me.dir.get_path();
 
-let button, icon, icon_path;
+let button, icon, icon_path, text;
 
 // Kerberos related variables
 let klist  // list of things returned from klist
@@ -38,6 +38,8 @@ var control = {
 };
 
 function _isAuthenticated() {
+    klist = GLib.spawn_command_line_sync("klist");
+
     // check if Kerberos authentication is present
     if (klist[0] == true && klist[1] == "") {
         return false;
@@ -54,15 +56,17 @@ function _hideMessage() {
 }
 
 function _toggleStatus() {
-    _updateStatus();
+    if (_isAuthenticated() == false) {
+        control.init();
+    }
 
-    //let dates = String.fromCharCode.apply(null,
-        //klist[1]).match(/(\d+\/\d+\/\d+ \d+:\d+:\d+)/g);
+    let dates = String.fromCharCode.apply(null,
+        klist[1]).match(/(\d+\/\d+\/\d+ \d+:\d+:\d+)/g);
 
-    //label = 'Ticket expires: ' + dates[1];
+    label = 'Ticket expires: ' + dates[1];
 
     if (!text) {
-        text = new St.Label({ style_class: 'helloworld-label', text: 'test' });
+        text = new St.Label({ style_class: 'helloworld-label', text: label });
         Main.uiGroup.add_actor(text);
     }
 
@@ -75,20 +79,16 @@ function _toggleStatus() {
 
     Tweener.addTween(text, {
         opacity: 0,
-        time: 2,
+        time: 4,
         transition: 'easeOutQuad',
         onComplete: _hideMessage
     });
 
-    if (_isAuthenticated() == false) {
-        control.init();
-    }
+    _updateStatus();
 }
 
 function _updateStatus() {
-    klist = GLib.spawn_command_line_sync("klist");
-
-    if (_isAuthenticated()) {  // klist exits with status true
+    if (_isAuthenticated()) {
         icon_path = Me.path + '/icons/stanford_auth_on.svg';
     } else {
         icon_path = Me.path + '/icons/stanford_auth_off.svg';
