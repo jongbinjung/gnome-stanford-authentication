@@ -48,6 +48,8 @@ function _isAuthenticated() {
     if (klist[0] == true && klist[2] == "") {
         return true;
     }
+
+    return false;
 }
 
 function _hideMessage() {
