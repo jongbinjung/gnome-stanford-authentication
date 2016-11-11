@@ -1,4 +1,3 @@
-
 const St = imports.gi.St;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
@@ -46,7 +45,13 @@ function _isAuthenticated() {
     }
 
     if (klist[0] == true && klist[2] == "") {
-        return true;
+        dates = String.fromCharCode.apply(null,
+            klist[1]).match(/(\d+\/\d+\/\d+ \d+:\d+:\d+)/g);
+        if (Date.parse(dates[1]) < Date.now()) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
     return false;
