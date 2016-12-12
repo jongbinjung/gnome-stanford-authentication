@@ -23,16 +23,13 @@ var control = {
         }
     },
 
-    _spawn_sync: function (cmd, e) {
-        try {
-            GLib.spawn_command_line_sync(cmd, null, null, null, e);
-        } catch (e) {
-            throw e;
-        }
+    init: function() {
+        this._spawn_async("gnome-terminal --command kinit", null);
     },
 
-    init: function() {
-        this._spawn_sync("gnome-terminal --command kinit", null);
+    copy2FA: function() {
+        // TODO(jongbin): Better way to find 2fa
+        this._spawn_async("/home/jongbin/repos/scripts/2fa stan", null);
     }
 };
 
@@ -66,6 +63,8 @@ function _toggleStatus() {
     if (_isAuthenticated() == false) {
         control.init();
     }
+
+    control.copy2FA();
 
     let dates = String.fromCharCode.apply(null,
         klist[1]).match(/(\d+\/\d+\/\d+ \d+:\d+:\d+)/g);
