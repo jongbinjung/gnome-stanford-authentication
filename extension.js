@@ -1,4 +1,7 @@
 const St = imports.gi.St;
+const Lang = imports.lang;
+const PanelMenu = imports.ui.panelMenu;
+const PopupMenu = imports.ui.popupMenu;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 const Util = imports.misc.util;
@@ -8,11 +11,29 @@ const Shell = imports.gi.Shell;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const EXTENSIONDIR = Me.dir.get_path();
+const Mainloop = imports.mainloop;
 
 let button, icon, icon_path, text;
 
 // Kerberos related variables
 let klist  // list of things returned from klist
+
+const KerberosIndicator = new Lang.Class({
+    Name: 'KerberosIndicator',
+    Extends: PanelMenu.Button,
+
+    _init: function () {
+		this.parent(null, 'ska');
+        let that = this;
+        let gicon = Gio.icon_new_for_string(Me.path + '/icons/stanford_auth_off.svg');
+        let icon = new St.Icon({
+            gicon: gicon,
+            style_class: 'system-status-icon'
+        });
+        this.actor.add_actor(icon);
+        //this.actor.connect('activate', Lang.bind(this, _toggleStatus))
+    },
+});
 
 var control = {
     _spawn_async: function(cmd, e) {
@@ -103,30 +124,35 @@ function _updateStatus() {
     icon.gicon = Gio.icon_new_for_string(icon_path);
 }
 
+let skaMenu;
+
 function init() {
-    button = new St.Bin({
-        style_class: 'panel-button',
-        reactive: true,
-        can_focus: true,
-        x_fill: false,
-        y_fill: true,
-        track_hover: true
-    });
+    //button = new St.Bin({
+        //style_class: 'panel-button',
+        //reactive: true,
+        //can_focus: true,
+        //x_fill: false,
+        //y_fill: true,
+        //track_hover: true
+    //});
 
-    icon = new St.Icon({
-        style_class: 'system-status-icon'
-    });
+    //icon = new St.Icon({
+        //style_class: 'system-status-icon'
+    //});
 
-    _updateStatus();
+    //_updateStatus();
 
-    button.set_child(icon);
-    button.connect('button-press-event', _toggleStatus);
+    //button.set_child(icon);
+    //button.connect('button-press-event', _toggleStatus);
 }
 
 function enable() {
-    Main.panel._rightBox.insert_child_at_index(button, 0);
+    //Main.panel._rightBox.insert_child_at_index(button, 0);
+    skaMenu = new KerberosIndicator;
+    Main.panel.addToStatusArea('ska-menu', skaMenu);
 }
 
 function disable() {
-    Main.panel._rightBox.remove_child(button);
+    //Main.panel._rightBox.remove_child(button);
+    skaMenu.destroy();
 }
