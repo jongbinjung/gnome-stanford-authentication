@@ -18,7 +18,7 @@ const KerberosIndicator = new Lang.Class({
 
     _init: function () {
         this.klist = "";
-		this.parent(null, 'ska');
+        this.parent(null, 'ska');
         this.gicon = Gio.icon_new_for_string(IconOff);
         this.icon = new St.Icon({
             gicon: this.gicon,
@@ -26,7 +26,11 @@ const KerberosIndicator = new Lang.Class({
         });
         this.actor.add_actor(this.icon);
         this.actor.connect('button-press-event', Lang.bind(this, this._toggleStatus));
-        this._isAuthenticated();
+    },
+
+    _enable: function() {
+        this._timeout = Mainloop.timeout_add_seconds(60,
+            Lang.bind(this, this._isAuthenticated));
     },
 
     _toggleStatus: function () {
@@ -40,8 +44,8 @@ const KerberosIndicator = new Lang.Class({
     },
 
     _isAuthenticated: function () {
-        this._timeout = Mainloop.timeout_add_seconds(60,
-            Lang.bind(this, this._isAuthenticated));
+        //this._timeout = Mainloop.timeout_add_seconds(60,
+            //Lang.bind(this, this._isAuthenticated));
         this.klist = GLib.spawn_command_line_sync("klist");
 
         // check if Kerberos authentication is present
@@ -79,6 +83,15 @@ const KerberosIndicator = new Lang.Class({
     _copy2FA: function() {
         // TODO(jongbin): Better way to find 2fa
         this._spawn_async("/home/jongbin/repos/scripts/2fa stan", null);
+    },
+
+    _disable: function() {
+        this.actor.remove_actor(this.icon);
+        Mainloop.source_remove(this._timeout);
+    },
+
+    destroy: function() {
+        this.parent();
     }
 });
 
@@ -91,10 +104,20 @@ function init(extensionMeta) {
 }
 
 function enable() {
-    skaMenu = new KerberosIndicator;
-    Main.panel.addToStatusArea('ska-menu', skaMenu);
+	try
+	{
+        skaMenu = new KerberosIndicator;
+        Main.panel.addToStatusArea('ska-menu', skaMenu);
+        skaMenu._enable();
+		shown = true;
+	}
+	catch(e)
+	{
+		global.logError(e.message);
+	}
 }
 
 function disable() {
+    skaMenu._disable();
     skaMenu.destroy();
 }
