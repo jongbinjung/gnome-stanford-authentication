@@ -56,7 +56,6 @@ const KerberosIndicator = new Lang.Class({
     },
 
     _isAuthenticated: function () {
-
         let dates;
         let is_auth = false;
         let e;
@@ -80,7 +79,6 @@ const KerberosIndicator = new Lang.Class({
         }
 
         if (this.klist[0] == true && this.klist[1] == "") {
-            //this.lbl.set_text("-");
             this.lbl.set_text("-");
             this.icon.gicon = Gio.icon_new_for_string(IconOff);
             return false;
@@ -106,6 +104,7 @@ const KerberosIndicator = new Lang.Class({
 
     _kinit: function() {
         this._spawn_async("gnome-terminal --command kinit", null);
+        this._resetLoop(1)
     },
     _copy2FA: function() {
         // TODO(jongbin): Better way to find 2fa
