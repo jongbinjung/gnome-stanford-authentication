@@ -1,4 +1,5 @@
 const St = imports.gi.St;
+const Clutter = imports.gi.Clutter;
 const Lang = imports.lang;
 const PanelMenu = imports.ui.panelMenu;
 const Main = imports.ui.main;
@@ -19,18 +20,30 @@ const KerberosIndicator = new Lang.Class({
     _init: function () {
         this.klist = "";
         this.parent(null, 'ska');
+		this.hbox = new St.BoxLayout({style_class: 'panel-status-menu-box'});
         this.gicon = Gio.icon_new_for_string(IconOff);
         this.icon = new St.Icon({
             gicon: this.gicon,
             style_class: 'system-status-icon'
         });
-        this.actor.add_actor(this.icon);
-        this.actor.connect('button-press-event', Lang.bind(this, this._toggleStatus));
+
+		this.lbl = new St.Label({text: "-", y_expand:true, y_align: Clutter.ActorAlign.CENTER});
+		this.hbox.add_actor(this.lbl);
+
+		this.hbox.add_actor(this.icon);
     },
 
     _enable: function() {
-        this._timeout = Mainloop.timeout_add_seconds(60,
-            Lang.bind(this, this._isAuthenticated));
+        this.actor.add_actor(this.hbox);
+        this.actor.connect('button-press-event', Lang.bind(this, this._toggleStatus));
+        this._timeout = Mainloop.timeout_add_seconds(1, Lang.bind(this, this._isAuthenticated));
+        this.count = 1;
+    },
+
+    _resetLoop: function(sec) {
+        Mainloop.source_remove(this._timeout);
+        this._timeout = Mainloop.timeout_add_seconds(sec, Lang.bind(this, this._isAuthenticated));
+        this.count = 1;
     },
 
     _toggleStatus: function () {
@@ -39,37 +52,50 @@ const KerberosIndicator = new Lang.Class({
         } else {
             this._kinit();
         }
-
-        this._isAuthenticated();
+        this._resetLoop(1);
     },
 
     _isAuthenticated: function () {
-        //this._timeout = Mainloop.timeout_add_seconds(60,
-            //Lang.bind(this, this._isAuthenticated));
-        this.klist = GLib.spawn_command_line_sync("klist");
 
-        // check if Kerberos authentication is present
-        if (this.klist[0] == true && this.klist[1] == "") {
-            this.icon.gicon = Gio.icon_new_for_string(IconOff);
-            return false;
-        }
+        let dates;
+        let is_auth = false;
+        let e;
+
+        this.klist = GLib.spawn_command_line_sync("klist", e);
 
         if (this.klist[0] == true && this.klist[2] == "") {
             dates = String.fromCharCode.apply(null,
                 this.klist[1]).match(/(\d+\/\d+\/\d+ \d+:\d+:\d+)/g);
-            if (Date.parse(dates[1]) < Date.now()) {
-                this.icon.gicon = Gio.icon_new_for_string(IconOff);
-                return false;
-            } else {
+            if (Date.parse(dates[1]) >= Date.now()) {
+                var diff = Date.parse(dates[1]) - Date.now()
+                var minutes = Math.round(diff/60000);
+                this.lbl.set_text(Math.floor(minutes/60) + ":" + minutes%60);
                 this.icon.gicon = Gio.icon_new_for_string(IconOn);
-                return true;
+                is_auth = true;
+            } else {
+                this.lbl.set_text("exp");
+                this.icon.gicon = Gio.icon_new_for_string(IconOff);
+                is_auth = false;
             }
         }
 
-        this.icon.gicon = Gio.icon_new_for_string(IconOff);
-        return false;
+        if (this.klist[0] == true && this.klist[1] == "") {
+            //this.lbl.set_text("-");
+            this.lbl.set_text("-");
+            this.icon.gicon = Gio.icon_new_for_string(IconOff);
+            return false;
+        }
+
+        return is_auth;
     },
 
+    _spawn_sync: function(cmd, e) {
+        try {
+            return GLib.spawn_command_line_sync(cmd, e);
+        } catch (e) {
+            throw e;
+        }
+    },
     _spawn_async: function(cmd, e) {
         try {
             GLib.spawn_command_line_async(cmd, e);
@@ -77,6 +103,7 @@ const KerberosIndicator = new Lang.Class({
             throw e;
         }
     },
+
     _kinit: function() {
         this._spawn_async("gnome-terminal --command kinit", null);
     },
@@ -89,7 +116,6 @@ const KerberosIndicator = new Lang.Class({
         this.actor.remove_actor(this.icon);
         Mainloop.source_remove(this._timeout);
     },
-
     destroy: function() {
         this.parent();
     }
@@ -104,17 +130,10 @@ function init(extensionMeta) {
 }
 
 function enable() {
-	try
-	{
-        skaMenu = new KerberosIndicator;
-        Main.panel.addToStatusArea('ska-menu', skaMenu);
-        skaMenu._enable();
-		shown = true;
-	}
-	catch(e)
-	{
-		global.logError(e.message);
-	}
+    skaMenu = new KerberosIndicator;
+    Main.panel.addToStatusArea('ska-menu', skaMenu);
+    skaMenu._enable();
+    shown = true;
 }
 
 function disable() {
