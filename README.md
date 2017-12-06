@@ -1,6 +1,6 @@
 # Stanford Kerberos Authentication Gnome Extension
 
-## Prerequisits
+## Prerequisites
 ### `kinit` authentication and time indicator
 Requires `krb5` to be setup for the Stanford network. See,
 https://github.com/jongbinjung/dotfiles/blob/master/SUNetize.sh
